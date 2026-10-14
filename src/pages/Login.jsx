@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
-import { api, USE_MOCK } from '../api/client.js'
+import { api } from '../api/client.js'
 import { STAFF_ROLES, useAuth } from '../auth.jsx'
 import { ErrorNote } from '../components/ui.jsx'
 
@@ -104,7 +104,6 @@ export default function Login() {
             {busy ? 'Please wait…' : enrolling ? 'Activate and sign in' : 'Sign in'}
           </button>
           {enrolling && <button type="button" className="link-btn" onClick={() => { setMode('login'); setEnrol(null); setInfo(''); setOtp('') }}>← Back to sign in</button>}
-          {USE_MOCK && <p className="demo sm"><b>Demo data.</b> officer@npc.gov.ng or admin@npc.gov.ng · Password123! · code 123456</p>}
         </form>
       </div>
 

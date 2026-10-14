@@ -21,12 +21,13 @@ export default function Review() {
   const [opening, setOpening] = useState('')
 
   const ev = detail.data
-  const loc = ev?.location
-  const points = useMemo(() => {
-    const lat = Number(loc?.latitude ?? loc?.lat ?? loc?.geo_latitude)
-    const lon = Number(loc?.longitude ?? loc?.lon ?? loc?.geo_longitude)
-    return Number.isFinite(lat) && Number.isFinite(lon) && (lat || lon) ? [{ lat, lon }] : []
-  }, [loc])
+  const lat = ev?.geo_latitude, lon = ev?.geo_longitude
+  const points = useMemo(
+    () => (Number.isFinite(lat) && Number.isFinite(lon) ? [{ lat, lon }] : []),
+    [lat, lon],
+  )
+  // The approve response is the event; the certificate number lives on the certificate record.
+  const certs = useAsync(() => (ev?.certificate_id ? api.get('/certificates') : Promise.resolve([])), [ev?.certificate_id])
 
   const approve = async () => {
     setBusy(true); setActionError(null)
@@ -45,7 +46,7 @@ export default function Review() {
     try {
       const file = await api.get(`/registrations/${eventId}/documents/${id}`, undefined, { blob: true })
       const viewable = /^(image\/|application\/pdf|text\/)/.test(file.blob.type)
-      deliverBlob({ ...file, filename: file.filename || d.file_name }, d.file_name || id, viewable)
+      deliverBlob({ ...file, filename: file.filename || d.filename }, d.filename || id, viewable)
     } catch (e) { setActionError(e) } finally { setOpening('') }
   }
 
@@ -53,8 +54,8 @@ export default function Review() {
   if (detail.error) return <><PageHeader title="Application" /><ErrorNote error={detail.error} onRetry={detail.reload} /><Link to="/queue">← Back to queue</Link></>
 
   const pending = ev.status === 'PENDING_VERIFICATION'
-  const certNumber = issued?.certificate_number || issued?.certificate?.certificate_number
   const certId = issued?.certificate_id || ev.certificate_id
+  const certNumber = (Array.isArray(certs.data) ? certs.data : []).find((c) => c.certificate_id === certId)?.certificate_number
   const docList = Array.isArray(docs.data) ? docs.data : []
 
   return (
@@ -90,7 +91,7 @@ export default function Review() {
           </section>
           <section className="card">
             <h3>{titleCase(ev.event_type)} details</h3>
-            <KeyValue data={ev.details} />
+            <KeyValue data={{ event_date: ev.event_date, ward: ev.ward, cause_of_death_icd11: ev.cause_of_death_icd11, registration_center_id: ev.registration_center_id, confirmation_reference: ev.confirmation_reference, ...ev.details }} />
             {ev.payment_reference && <p className="sm">Payment reference: <code>{ev.payment_reference}</code></p>}
             {ev.rejection_reason && <p className="sm">Rejected: {ev.rejection_reason}</p>}
           </section>
@@ -102,7 +103,7 @@ export default function Review() {
                   const id = d.document_id || d.id
                   return (
                     <li key={id}>
-                      <div><b>{titleCase(d.document_type || d.type || 'Document')}</b><small className="muted"> {d.file_name} {size(d.size_bytes)}</small></div>
+                      <div><b>{titleCase(d.doc_type)}</b><small className="muted"> {d.filename} {size(d.size_bytes)}</small></div>
                       <button className="btn-light" disabled={opening === id} onClick={() => openDoc(d)}>{opening === id ? 'Opening…' : 'Open'}</button>
                     </li>
                   )
@@ -115,7 +116,7 @@ export default function Review() {
         <div className="col">
           <section className="card">
             <h3>Location</h3>
-            <p className="sm muted">{eventState(ev)} · LGA {eventLga(ev)}{loc?.ward ? ` · ${loc.ward}` : ''}</p>
+            <p className="sm muted">State {eventState(ev)} · LGA {eventLga(ev)}{ev.ward ? ` · ${ev.ward}` : ''}</p>
             {points.length ? <MapView points={points} label="Event location" height={260} /> : <Empty>No coordinates were captured.</Empty>}
             {points.length > 0 && <small className="muted">{points[0].lat.toFixed(5)}, {points[0].lon.toFixed(5)}</small>}
           </section>

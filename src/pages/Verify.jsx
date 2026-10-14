@@ -28,9 +28,9 @@ export default function Verify() {
 
   const submit = (e) => { e.preventDefault(); if (input.trim()) navigate(`/verify/${encodeURIComponent(input.trim())}`) }
   const { res } = state
-  const status = String(res?.status || '').toUpperCase()
-  const valid = res && res.valid !== false && !['NOT_FOUND', 'REVOKED', 'INVALID'].includes(status)
-  const tampered = res?.hash_match === false
+  const status = res?.status
+  const valid = status === 'VALID'
+  const tampered = status === 'TAMPERED'
 
   return (
     <div className="login">
@@ -52,15 +52,18 @@ export default function Verify() {
           : <ErrorNote error={state.error} />)}
         {res && (
           <div className={'panel verdict ' + (valid && !tampered ? 'ok' : 'bad')} role="status">
-            <h2>{tampered ? 'Do not trust this certificate' : valid ? 'Valid certificate' : status === 'REVOKED' ? 'Certificate revoked' : 'Not found'}</h2>
+            <h2>{valid ? 'Valid certificate' : tampered ? 'Do not trust this certificate' : status === 'REVOKED' ? 'Certificate revoked' : 'Not found'}</h2>
             {tampered && <p>The QR code does not match the issued certificate. It may have been altered or copied.</p>}
-            {!valid && !tampered && <p>{status === 'REVOKED' ? 'This certificate was revoked by the National Population Commission and is no longer valid.' : 'No certificate with that number exists. Check the number and try again.'}</p>}
+            {status === 'REVOKED' && <p>This certificate was revoked by the National Population Commission and is no longer valid.</p>}
+            {status === 'NOT_FOUND' && <p>No certificate with that number exists. Check the number and try again.</p>}
             {(valid || status === 'REVOKED') && (
               <dl className="kv">
-                {res.certificate_number && <div><dt>Number</dt><dd>{res.certificate_number}</dd></div>}
-                {res.event_type && <div><dt>Type</dt><dd>{titleCase(res.event_type)}</dd></div>}
-                {(res.holder_name || res.name) && <div><dt>Name</dt><dd>{res.holder_name || res.name}</dd></div>}
-                {(res.issued_at || res.issue_date) && <div><dt>Issued</dt><dd>{fmtDate(res.issued_at || res.issue_date)}</dd></div>}
+                <div><dt>Number</dt><dd>{res.certificate_number}</dd></div>
+                {res.certificate_type && <div><dt>Type</dt><dd>{titleCase(res.certificate_type)}</dd></div>}
+                {res.holder_name_masked && <div><dt>Name</dt><dd>{res.holder_name_masked}</dd></div>}
+                {res.event_date && <div><dt>Event date</dt><dd>{fmtDate(res.event_date)}</dd></div>}
+                {res.issued_at && <div><dt>Issued</dt><dd>{fmtDate(res.issued_at)}</dd></div>}
+                {res.issuing_authority && <div><dt>Issued by</dt><dd>{res.issuing_authority}</dd></div>}
               </dl>
             )}
           </div>

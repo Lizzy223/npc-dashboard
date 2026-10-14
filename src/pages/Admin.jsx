@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api } from '../api/client.js'
 import { ROLE_LABEL } from '../auth.jsx'
 import { useAsync, usePaged } from '../hooks.js'
-import { fmtDateTime, titleCase } from '../format.js'
+import { fmtDateTime } from '../format.js'
 import { Empty, ErrorNote, Input, Modal, NIGERIA_STATES, PageHeader, Pager, Select, Spinner, useToast } from '../components/ui.jsx'
 
 const STAFF_CREATE_ROLES = ['NPC_OFFICER', 'ADMIN', 'FIELD_REGISTRAR', 'MEDICAL_PRACTITIONER']
@@ -46,7 +46,7 @@ export function AdminUsers() {
           <div className="tbl-wrap"><table>
             <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Two-factor</th></tr></thead>
             <tbody>{paged.rows.map((u) => (
-              <tr key={u.id || u.email}><td><b>{u.full_name || '-'}</b></td><td>{u.email}</td><td>{ROLE_LABEL[u.role] || u.role}</td>
+              <tr key={u.user_id}><td><b>{u.full_name || '-'}</b></td><td>{u.email}</td><td>{ROLE_LABEL[u.role] || u.role}</td>
                 <td>{u.role === 'CITIZEN' ? <span className="muted">Not required</span> : <span className={'sbadge ' + (u.mfa_enabled ? 's-approved' : 's-pending_payment')}>{u.mfa_enabled ? 'Enrolled' : 'Not yet enrolled'}</span>}</td></tr>
             ))}</tbody>
           </table></div>
@@ -76,7 +76,7 @@ export function AdminMda() {
     try { setIssued(await api.post('/admin/mda-clients', { name: name.trim(), scopes })); setName(''); toast('API key issued.') }
     catch (err) { setError(err) } finally { setBusy(false) }
   }
-  const key = issued?.api_key || issued?.key
+  const key = issued?.api_key
   const copy = async () => { try { await navigator.clipboard.writeText(key); setCopied(true) } catch { setCopied(false) } }
 
   return (
@@ -109,8 +109,8 @@ export function AdminMda() {
 }
 
 /* ---------------- registration centres ---------------- */
-const CENTER_TYPES = ['NPC_OFFICE', 'HEALTH_FACILITY', 'LGA_OFFICE', 'MOBILE_UNIT']
-const blankCenter = { center_id: '', name: '', center_type: 'NPC_OFFICE', state_code: '', lga_code: '', geo_latitude: '', geo_longitude: '' }
+const CENTER_TYPES = ['PHC', 'LGA', 'NIMC', 'NPC']
+const blankCenter = { center_id: '', name: '', center_type: 'NPC', state_code: '', lga_code: '', geo_latitude: '', geo_longitude: '' }
 
 function CreateCenter({ onClose, onDone }) {
   const toast = useToast()
@@ -131,7 +131,7 @@ function CreateCenter({ onClose, onDone }) {
         <label htmlFor="cid">Centre ID</label><input id="cid" className="field" value={f.center_id} onChange={set('center_id')} required autoFocus />
         <label htmlFor="cn">Name</label><input id="cn" className="field" value={f.name} onChange={set('name')} required />
         <label htmlFor="ct">Type</label>
-        <select id="ct" className="field" value={f.center_type} onChange={set('center_type')}>{CENTER_TYPES.map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}</select>
+        <select id="ct" className="field" value={f.center_type} onChange={set('center_type')}>{CENTER_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select>
         <div className="grid2">
           <div><label htmlFor="cs">State</label>
             <select id="cs" className="field" value={f.state_code} onChange={set('state_code')} required><option value="">Choose…</option>{NIGERIA_STATES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></div>
@@ -156,13 +156,13 @@ export function AdminCenters() {
     <>
       <PageHeader title="Registration centres" sub="Centres appear in registrar dropdowns." actions={<button className="btn-primary" onClick={() => setCreating(true)}>+ Add centre</button>} />
       <section className="card">
-        <div className="filters"><Select label="State" value={state} onChange={setState} options={NIGERIA_STATES} /><Select label="Type" value={type} onChange={setType} options={CENTER_TYPES} /></div>
+        <div className="filters"><Select label="State" value={state} onChange={setState} options={NIGERIA_STATES} /><Select label="Type" value={type} onChange={setType} options={CENTER_TYPES.map((t) => [t, t])} /></div>
         <ErrorNote error={list.error} onRetry={list.reload} />
         {list.loading ? <Spinner /> : !rows.length ? <Empty>No centres found.</Empty> : (
           <div className="tbl-wrap"><table>
             <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>State / LGA</th><th>Coordinates</th></tr></thead>
             <tbody>{rows.map((c) => (
-              <tr key={c.center_id}><td><code>{c.center_id}</code></td><td><b>{c.name}</b></td><td>{titleCase(c.center_type)}</td><td>{c.state_code} / {c.lga_code}</td>
+              <tr key={c.center_id}><td><code>{c.center_id}</code></td><td><b>{c.name}</b></td><td>{c.center_type}</td><td>{c.state_code} / {c.lga_code}</td>
                 <td>{Number(c.geo_latitude).toFixed(4)}, {Number(c.geo_longitude).toFixed(4)}</td></tr>
             ))}</tbody>
           </table></div>
@@ -203,7 +203,7 @@ export function AdminAudit() {
           <div className="tbl-wrap"><table>
             <thead><tr><th>When</th><th>Action</th><th>Resource</th><th>User</th></tr></thead>
             <tbody>{paged.rows.map((a, i) => (
-              <tr key={a.id ?? i}><td>{fmtDateTime(a.timestamp || a.created_at)}</td><td><code>{a.action}</code></td><td>{a.resource_type} <small className="muted">{a.resource_id}</small></td><td>{a.user_id || '-'}</td></tr>
+              <tr key={a.id ?? i}><td>{fmtDateTime(a.timestamp)}</td><td><code>{a.action}</code></td><td>{a.resource_type} <small className="muted">{a.resource_id}</small></td><td>{a.actor || a.user_id || '-'}</td></tr>
             ))}</tbody>
           </table></div>
         )}

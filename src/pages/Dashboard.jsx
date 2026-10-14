@@ -5,12 +5,15 @@ import { EVENT_TYPES, fmtNum, titleCase } from '../format.js'
 import MapView from '../components/MapView.jsx'
 import { Empty, ErrorNote, Input, NIGERIA_STATES, PageHeader, Select, Spinner } from '../components/ui.jsx'
 
-const pick = (o, keys, d) => { for (const k of keys) if (o?.[k] !== undefined && o?.[k] !== null) return o[k]; return d }
 const arr = (v) => (Array.isArray(v) ? v : [])
 
 /* ---- charts: plain SVG / CSS, no chart library ---- */
-function MonthlyChart({ data }) {
-  const rows = arr(data).map((r) => ({ label: String(pick(r, ['month', 'period', 'label'], '')), births: Number(pick(r, ['births', 'birth'], 0)), deaths: Number(pick(r, ['deaths', 'death'], 0)) }))
+function MonthlyChart({ births, deaths }) {
+  // The API returns two bucket lists ({label, count}); merge them by month.
+  const byMonth = new Map()
+  arr(births).forEach((b) => byMonth.set(b.label, { label: b.label, births: b.count, deaths: 0 }))
+  arr(deaths).forEach((b) => byMonth.set(b.label, { ...(byMonth.get(b.label) || { label: b.label, births: 0 }), deaths: b.count }))
+  const rows = [...byMonth.values()].sort((a, b) => a.label.localeCompare(b.label))
   if (!rows.length) return <Empty>No monthly data for these filters.</Empty>
   const max = Math.max(1, ...rows.flatMap((r) => [r.births, r.deaths]))
   const W = 560, H = 220, pad = { l: 36, r: 8, t: 10, b: 28 }
@@ -49,7 +52,7 @@ function HBars({ rows, empty }) {
 }
 
 function AgeSex({ data }) {
-  const rows = arr(data).map((r) => ({ label: String(pick(r, ['age_group', 'age', 'band', 'label'], '')), m: Number(pick(r, ['male', 'm'], 0)), f: Number(pick(r, ['female', 'f'], 0)) }))
+  const rows = arr(data).map((r) => ({ label: r.age_band, m: r.male, f: r.female }))
   if (!rows.length) return <Empty>No age and sex data.</Empty>
   const max = Math.max(1, ...rows.flatMap((r) => [r.m, r.f]))
   return (
@@ -121,10 +124,10 @@ export default function Dashboard() {
   const heat = useAsync(() => (blocked ? Promise.resolve([]) : api.get('/analytics/heatmap', { ...f, precision })), [JSON.stringify(f), precision])
 
   const d = dash.data || {}
-  const totals = d.totals && typeof d.totals === 'object' ? d.totals : Object.fromEntries(Object.entries(d).filter(([, v]) => typeof v === 'number'))
-  const regions = arr(d.regions).map((r) => ({ label: String(pick(r, ['name', 'state', 'region', 'lga', 'key'], '?')), value: Number(pick(r, ['count', 'total', 'value'], 0)) }))
-  const causes = arr(d.top_causes).map((r) => ({ label: String(pick(r, ['cause', 'cause_of_death', 'name'], '?')), value: Number(pick(r, ['count', 'total', 'value'], 0)) }))
-  const points = useMemo(() => arr(heat.data).map((p) => ({ lat: Number(pick(p, ['latitude', 'lat'])), lon: Number(pick(p, ['longitude', 'lon', 'lng'])), weight: Number(pick(p, ['count', 'weight', 'value'], 1)) })), [heat.data])
+  const totals = d.totals || {}
+  const regions = arr(d.by_region).map((r) => ({ label: r.label, value: r.count }))
+  const causes = arr(d.top_causes_of_death).map((r) => ({ label: r.label, value: r.count }))
+  const points = useMemo(() => arr(heat.data).map((p) => ({ lat: p.latitude, lon: p.longitude, weight: p.count })), [heat.data])
 
   return (
     <>
@@ -154,7 +157,7 @@ export default function Dashboard() {
             ))}
           </div>
           <div className="two even">
-            <section className="card"><h3>Births and deaths by month</h3><MonthlyChart data={d.monthly || d.monthly_trends} /></section>
+            <section className="card"><h3>Births and deaths by month</h3><MonthlyChart births={d.monthly_births} deaths={d.monthly_deaths} /></section>
             <section className="card"><h3>Age and sex</h3><AgeSex data={d.age_sex} /></section>
           </div>
           <div className="two even">

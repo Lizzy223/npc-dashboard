@@ -1,7 +1,4 @@
-import { mockFetch } from './mock.js'
-
-export const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+export const BASE_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
 
 const TOKEN_KEY = 'npc.token'
 const store = {
@@ -51,7 +48,7 @@ export async function request(path, { method = 'GET', query, body, blob = false,
 
   let res
   try {
-    res = await (USE_MOCK ? mockFetch(url, init) : fetch(url, init))
+    res = await fetch(url, init)
   } catch {
     throw new ApiError(0, 'NETWORK', 'Cannot reach the server. Check your connection and the API address.')
   }

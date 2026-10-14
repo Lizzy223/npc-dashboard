@@ -16,7 +16,7 @@ export default function Queue() {
   const [type, setType] = useState('')
   const [state, setState] = useState('')
   const paged = usePaged((p) => api.get('/registrations/queue', p), [], 25)
-  const rows = paged.rows.filter((e) => (!type || e.event_type === type) && (!state || e.location?.state_code === state || e.location?.state === state))
+  const rows = paged.rows.filter((e) => (!type || e.event_type === type) && (!state || e.state_code === state))
 
   return (
     <>

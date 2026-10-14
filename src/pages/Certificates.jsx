@@ -15,7 +15,7 @@ export default function Certificates() {
   const [busy, setBusy] = useState('')
 
   const certs = (Array.isArray(list.data) ? list.data : []).filter((c) =>
-    !filter || `${c.certificate_number} ${c.holder_name || ''} ${c.event_id || ''}`.toLowerCase().includes(filter.toLowerCase()))
+    !filter || `${c.certificate_number} ${c.event_id || ''}`.toLowerCase().includes(filter.toLowerCase()))
 
   const download = async (c) => {
     setBusy(c.certificate_id); setError(null)
@@ -34,22 +34,22 @@ export default function Certificates() {
       <section className="card">
         <div className="filters">
           <label className="filter grow">Filter loaded certificates
-            <input className="field sm" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Certificate number or name" />
+            <input className="field sm" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Certificate number" />
           </label>
           <button className="btn-light" onClick={list.reload}>↻ Refresh</button>
         </div>
         <ErrorNote error={error || list.error} onRetry={list.error ? list.reload : undefined} />
         {list.loading ? <Spinner /> : certs.length === 0 ? <Empty>No certificates found.</Empty> : (
           <div className="tbl-wrap"><table>
-            <thead><tr><th>Number</th><th>Holder</th><th>Type</th><th>Issued</th><th>Status</th><th><span className="sr">Actions</span></th></tr></thead>
+            <thead><tr><th>Number</th><th>Type</th><th>Issued</th><th>Downloads</th><th>Status</th><th><span className="sr">Actions</span></th></tr></thead>
             <tbody>{certs.map((c) => {
-              const revoked = String(c.status).toUpperCase() === 'REVOKED'
+              const revoked = c.is_active === false
               return (
                 <tr key={c.certificate_id}>
                   <td><code>{c.certificate_number}</code></td>
-                  <td>{c.holder_name || '-'}</td>
                   <td>{c.event_type ? <TypeTag type={c.event_type} /> : '-'}</td>
-                  <td>{fmtDate(c.issued_at || c.created_at)}</td>
+                  <td>{fmtDate(c.issued_at)}</td>
+                  <td>{c.download_count}</td>
                   <td><span className={'sbadge ' + (revoked ? 's-rejected' : 's-approved')}>{revoked ? 'Revoked' : 'Active'}</span></td>
                   <td className="actions">
                     <button className="btn-light sm-btn" disabled={busy === c.certificate_id || revoked} onClick={() => download(c)}>Download</button>

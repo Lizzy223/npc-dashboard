@@ -14,11 +14,9 @@ export const titleCase = (s) => String(s ?? '').toLowerCase().replace(/_/g, ' ')
 export const STATUSES = ['PENDING_DOCUMENTS', 'PENDING_PAYMENT', 'PENDING_VERIFICATION', 'REFERRED_TO_CENTER', 'APPROVED', 'REJECTED']
 export const EVENT_TYPES = ['BIRTH', 'DEATH', 'ATTESTATION']
 
-// Tolerant readers: the OpenAPI schema is the contract, but older/newer builds name fields differently.
-export const subjectName = (e) => {
-  const s = e?.subject || {}
-  return s.full_name || [s.first_name, s.middle_name, s.last_name || s.surname].filter(Boolean).join(' ') || e?.full_name || '-'
-}
-export const eventState = (e) => e?.location?.state || e?.location?.state_code || e?.state_code || '-'
-export const eventLga = (e) => e?.location?.lga || e?.location?.lga_code || e?.lga_code || '-'
-export const eventId = (e) => e?.event_id || e?.id
+// Field names follow the backend OpenAPI schema (EventOut, CitizenBrief).
+export const personName = (p) => [p?.first_name, p?.last_name].filter(Boolean).join(' ') || '-'
+export const subjectName = (e) => personName(e?.subject)
+export const eventState = (e) => e?.state_code || '-'
+export const eventLga = (e) => e?.lga_code || '-'
+export const eventId = (e) => e?.event_id
